@@ -1,0 +1,109 @@
+\documentclass[10pt,twocolumn,letterpaper]{article}
+% \documentclass[12pt,letterpaper]{article}
+
+\usepackage{listings}
+\usepackage{titlesec}
+\setcounter{secnumdepth}{4}
+\usepackage{cvpr}
+\usepackage{times}
+\usepackage{epsfig}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{subfig}
+
+\titleformat{\paragraph}
+{\normalfont\normalsize\bfseries}{\theparagraph}{1em}{}
+\titlespacing*{\paragraph}
+{0pt}{3.25ex plus 1ex minus .2ex}{1.5ex plus .2ex}
+
+% Include other packages here, before hyperref.
+
+% If you comment hyperref and then uncomment it, you should delete
+% egpaper.aux before re-running latex.  (Or just hit 'q' on the first latex
+% run, let it finish, and you should be clear).
+\usepackage[breaklinks=true,bookmarks=false]{hyperref}
+
+\cvprfinalcopy % *** Uncomment this line for the final submission
+
+\def\cvprPaperID{****} % *** Enter the CVPR Paper ID here
+\def\httilde{\mbox{\tt\raisebox{-.5ex}{\symbol{126}}}}
+\graphicspath{{./pics/}} % put all graphics here
+
+% Pages are numbered in submission mode, and unnumbered in camera-ready
+%\ifcvprfinal\pagestyle{empty}\fi
+%\setcounter{page}{4321}
+\begin{document}
+
+%%%%%%%%% TITLE
+% \title{\LaTeX\ Author Guidelines for CVPR Proceedings}
+\title{Model Pruning: Weekly Report 8}
+\author{Patricia Gschoßmann}
+
+\maketitle
+%\thispagestyle{empty}
+
+%%%%%%%%% BODY TEXT
+\section{Weekly Progress}
+In this week a new RGB autoencoder with a bottleneck of size $16\times16\times128$ was pruned to reduce 65\% of its encoder's parameters.
+The original model's results can be seen in fig.~\ref{fig:original_model}.
+\begin{figure}[hpbt]
+	\centering
+	\subfloat[Original image\label{fig:original}]{\includegraphics[scale=0.175]{pics/rgb_original.png}}
+	\qquad
+	\subfloat[Original model output\label{fig:original_model}]{\includegraphics[scale=0.175]{pics/output.png}}
+	\caption[]{Original and reconstructed image data}
+	\label{fig:results}
+\end{figure}
+
+\section{Results}
+\subsection{Addendum to last week}
+Last week's model reached a validation loss of 2.57 at $\alpha=0$.
+The training was resumed repeatedly with different learning rates (0.01 and 0.1).
+Unfortunately, this did not improve the performance.
+
+\subsection{This week's results}
+In contrast to last week, only the encoder was pruned in this week, as this affects the latent space.
+The decoder then needs to be trained accordingly - this happens during the pruning process.
+Moreover, each convolutional layer in the encoder was pruned, regardless of whether a transposed convolution follows\footnote{This only applies to the last convolution anyway}, leading to a reduced bottleneck.\\
+The same setup as last week was used:
+Pruning with weight updates of the pretrained model and a learning rate of 0.001 were used, as well as a step scheduler, which reduces $\alpha$ by 0.1 at each iteration.
+The original model reached a minimum validation loss of 1.40.\\\\
+For the validation development at each $\alpha$-decay the same behavior as last week could be observed:
+Except for $\alpha=0$, the validation loss was the highest for the model with $\alpha=0.9$ with $val\_loss=2.12$.
+With each $\alpha$-decay, the performance improved.\\
+The model reached a validation loss of 2.05 at $\alpha=0.1$.
+At the first iteration for $\alpha=0$ it only reached a validation loss of 2.53.
+The training of the model was resumed with a learning rate of 0.01, however, the performance improved only slightly (2.48).
+Corresponding validation loss curves can be seen in fig.~\ref{fig:curve}.
+Intermediate outputs for $\alpha=0.1$ and $\alpha=0$ before pruning are shown in figure~\ref{fig:results}.
+The differences are clearly visible.
+However, the silhouettes of the objects in the image are somehow still visible.
+\begin{figure}[hpbt]
+	\centering
+	\includegraphics[scale=0.4]{pics/val_loss.png}
+	\caption{Validation loss development for $\alpha=0.1$ (red), $\alpha=0$ with $lr=0.001$ (blue) and the resumed training for $\alpha=0$ with $lr=0.01$ (green).}
+	\label{fig:curve}
+\end{figure}
+\begin{figure}[hpbt]
+	\centering
+	\subfloat[Output at $\alpha=0.1$]{\includegraphics[scale=0.175]{pics/0_1.png}}
+	\qquad
+	\subfloat[Output at $\alpha=0$]{\includegraphics[scale=0.175]{pics/0.png}}
+	\caption[]{Reconstructed image data during the pruning process. The original image is depicted in fig.~\ref{fig:original}.}
+	\label{fig:results}
+\end{figure}
+
+\section{Plan}
+\begin{itemize}
+	\item Improve performance for $\alpha=0$ with learning rate approach (increase learning rate to 0.1) and smaller $\alpha$-decays
+	\item Prune encoder correctly
+	\item If successfull: Start pruning corresponding decoder
+\end{itemize}
+
+{\small
+\bibliographystyle{ieee}
+\bibliography{egbib}
+}
+
+\end{document}

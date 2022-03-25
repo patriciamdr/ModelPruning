@@ -1,0 +1,127 @@
+\documentclass[10pt,twocolumn,letterpaper]{article}
+% \documentclass[12pt,letterpaper]{article}
+
+\usepackage{listings}
+\usepackage{cvpr}
+\usepackage{times}
+\usepackage{epsfig}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{subfig}
+
+% Include other packages here, before hyperref.
+
+% If you comment hyperref and then uncomment it, you should delete
+% egpaper.aux before re-running latex.  (Or just hit 'q' on the first latex
+% run, let it finish, and you should be clear).
+\usepackage[breaklinks=true,bookmarks=false]{hyperref}
+
+\cvprfinalcopy % *** Uncomment this line for the final submission
+
+\def\cvprPaperID{****} % *** Enter the CVPR Paper ID here
+\def\httilde{\mbox{\tt\raisebox{-.5ex}{\symbol{126}}}}
+\graphicspath{{./pics/}} % put all graphics here
+
+% Pages are numbered in submission mode, and unnumbered in camera-ready
+%\ifcvprfinal\pagestyle{empty}\fi
+%\setcounter{page}{4321}
+\begin{document}
+
+%%%%%%%%% TITLE
+% \title{\LaTeX\ Author Guidelines for CVPR Proceedings}
+\title{Model Pruning: Weekly Report 3}
+\author{Patricia Gschoßmann}
+
+\maketitle
+%\thispagestyle{empty}
+
+%%%%%%%%% BODY TEXT
+\section{Weekly Progress}
+This week's experiments were all executed to prune 65\% of the parameters at once.
+Multiple approaches were pursued:
+\begin{itemize}
+	\item Test with different $\alpha$-schedules
+	\item Add gaussian noise on half of the training data
+	\item Train as regression task on logits of pretrained model
+\end{itemize}
+Apart from this, an important error in the code was found:
+The parallel branch for convolutional layers should have $1\times1$ kernels, however, $3\times3$ sized kernels were used originally.
+This error was fixed before all of the following experiments.
+
+\section{Results}
+\subsection{Different $\alpha$-schedules}
+Last week's $\alpha$-schedule was able to maintain the model's original training accuracy until $\alpha=0.1$ and the original validation accuracy until $\alpha=0.4$ (with minor performance drops).
+In order to reach better results, different $\alpha$-schedules were tested.
+One interesting result can be seen in fig.~\ref{fig:acc}, where the model at $\alpha=0.43$ reached the original accuracy without performance drops after a longer training period.
+This indicates that the patience variable should be increased, i.e.\ the model should be trained longer in each iteration.\\
+The experiment is still running, which is why it is not yet possible to say whether the training performance will collapse as in the week before.
+\begin{figure}[hpbt]
+	\centering
+	\subfloat[Training accuracy]{\includegraphics[scale=0.4]{pics/train_acc.png}}
+	\hspace{0.1\textwidth}
+	\subfloat[Validation accuracy]{\includegraphics[scale=0.4]{pics/val_acc.png}}
+	\caption[]{Development of train- and validation accuracy during training for $\alpha=0.95$ (red), $\alpha=0.43$ (turquoise), $\alpha=0.26$ (light blue).
+	An exponential schedule with a decay rate of $0.05$ was used.}
+	\label{fig:acc}
+\end{figure}
+\subsection{Data Augmentation}
+Last week's results have shown, that the model starts overfitting during the $\alpha$-decay.
+In order to maintain not only the training accuracy, but also the validation accuracy, I decided to add additional data augmentation techniques to the training set.
+For the following results, gaussian noise was randomly applied to half of the training data.\\
+Figure~\ref{fig:acc_DA} shows the training and validation accuracy for selected $\alpha$ values between $1$ and $0.2$.\footnote{The experiment was aborted because of its development.}
+It is not a surprise, that the model could not reach the original model's training accuracy of 92\%.
+Unfortunately, the best validation loss saturated just above 80\%.
+However, what is interesting is, that the model around $\alpha=0.57$ reached a higher accuracy than the one where $\alpha$ is aroung $0.9$.
+As before, this indicates that the patience variable could be increased.
+Nevertheless, the results do not look very promising, since the accuracy drops in both cases for lower $\alpha$ values.
+\begin{figure}[hpbt]
+	\centering
+	\subfloat[Training accuracy]{\includegraphics[scale=0.4]{pics/train_acc_DA.png}}
+	\hspace{0.1\textwidth}
+	\subfloat[Validation accuracy]{\includegraphics[scale=0.4]{pics/val_acc_DA.png}}
+	\caption[]{Train- and validation accuracy during training with data augmentation for $\alpha$ values between $1$ and $0.2$: $\alpha=0.95$ (orange, better performance), $\alpha=0.57$ (pink), $\alpha=0.39$ (turquoise), $\alpha=0.3$ (light blue), $\alpha=0.25$ (orange, worse performance).
+	An exponential schedule with a decay rate of $0.05$ was used.}
+	\label{fig:acc_DA}
+\end{figure}
+\subsection{Regression}
+Another approach I pursued to maintain the validation accuracy is training the model as in a regression task.
+In the following, the logits of the pretrained model were used as target values.
+Until now, this set up is only tested with the exponential $\alpha$-scheduler.\\
+Figure~\ref{fig:loss_regression} shows the training and validation loss for selected $\alpha$ values between $1$ and $0.3$\footnote{The experiment is still running.}.
+The results look promising at first, since both losses decreased as desired.
+Unfortunately, this development does not last especially for the validation loss.
+However, because this approach has only been tried once and is still being pursued, the results cannot yet be interpreted precisely.
+The results could be caused by an unsuitable approach or through an error in the implementation, which needs further investigation.
+\begin{figure}[hpbt]
+	\centering
+	\subfloat[Training loss]{\includegraphics[scale=0.4]{pics/train_loss_regression.png}}
+	\hspace{0.1\textwidth}
+	\subfloat[Validation loss]{\includegraphics[scale=0.4]{pics/val_loss_regression.png}}
+	\caption[]{Train- and validation loss during training as regression task for $\alpha$ values between $1$ and $0.3$: $\alpha=0.95$ (dark blue), $\alpha=0.67$ (red), $\alpha=0.52$ (orange), $\alpha=0.35$ (turquoise).
+	An exponential schedule with a decay rate of $0.05$ was used.}
+	\label{fig:loss_regression}
+\end{figure}
+
+\section{Plan}
+For the next week I want to investigate following approaches in order to improve my results:
+\begin{itemize}
+	\item Debug regression implementation and continue experiments.
+	\item Initialize the weights of the parallel branches appropriately before training.
+	\item Allow weight updates for the pretrained model.
+	\item For the basic set up: Reduce the $\alpha$-decay rate to train with smaller steps.
+	\item Apply gaussian noise on a smaller percentage of the data.
+\end{itemize}
+
+\section{Summary of new scripts}
+\begin{itemize}
+	\item \texttt{regression\_model.py}: Subclass of \texttt{pruned\_model.py}.
+		Implements classification task as regression, i.e. computes the loss differently:
+		Total loss is the sum over the mean squared errors between each output value and corresponding logit of the pretrained model.
+\end{itemize}
+{\small
+\bibliographystyle{ieee}
+\bibliography{egbib}
+}
+
+\end{document}

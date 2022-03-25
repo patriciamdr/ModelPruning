@@ -1,0 +1,98 @@
+\documentclass[10pt,twocolumn,letterpaper]{article}
+
+% \documentclass[12pt,letterpaper]{article}
+\usepackage{listings}
+\usepackage{titlesec}
+\setcounter{secnumdepth}{4}
+\usepackage{cvpr}
+\usepackage{times}
+\usepackage{epsfig}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{subfig}
+
+\titleformat{\paragraph}
+{\normalfont\normalsize\bfseries}{\theparagraph}{1em}{}
+\titlespacing*{\paragraph}
+{0pt}{3.25ex plus 1ex minus .2ex}{1.5ex plus .2ex}
+
+% Include other packages here, before hyperref.
+
+% If you comment hyperref and then uncomment it, you should delete
+% egpaper.aux before re-running latex.  (Or just hit 'q' on the first latex
+% run, let it finish, and you should be clear).
+\usepackage[breaklinks=true,bookmarks=false]{hyperref}
+
+\cvprfinalcopy % *** Uncomment this line for the final submission
+
+\def\cvprPaperID{****} % *** Enter the CVPR Paper ID here
+\def\httilde{\mbox{\tt\raisebox{-.5ex}{\symbol{126}}}}
+\graphicspath{{./pics/}} % put all graphics here
+
+% Pages are numbered in submission mode, and unnumbered in camera-ready
+%\ifcvprfinal\pagestyle{empty}\fi
+%\setcounter{page}{4321}
+\begin{document}
+
+%%%%%%%%% TITLE
+% \title{\LaTeX\ Author Guidelines for CVPR Proceedings}
+\title{Model Pruning: Weekly Report 9}
+\author{Patricia Gschoßmann}
+
+\maketitle
+%\thispagestyle{empty}
+
+%%%%%%%%% BODY TEXT
+\section{Weekly Progress}
+In last week's experiments the $\alpha$-decay from 0.1 to 0.0 was too large to maintain the model's performance.
+In this week the experiments were continued with several different approaches in order to improve the results:
+\begin{itemize}
+	\item Increase the learning rate at $\alpha=0$ (to 0.01 and 0.1)
+	\item Restart pruning from $\alpha=0.1$ using an exponential $\alpha$-schedule with a decay-rate of 0.3 (and an initial learing rate of 0.001)
+	\item Analyze the weights (i.e. "How big are they compared to the original model's weights?")
+	\item Add weight decay of 1e-4
+\end{itemize}
+After multiple experiments, I came to the conclusion that I was not able to reduce the validation loss.
+Unfortunately, I then discovered a bug in my \texttt{inference\_rgb.py} used to test the models:
+The models' $\alpha$-values were not updated accordingly (i.e. $\alpha=0.1$ was used instead of $\alpha=0.0$), which is why the models' outputs looked not as expected.
+The correct output of last week's model with $\alpha=0.0$ is depicted in fig.~\ref{fig:true}.
+One can observe, that the output is a bit more blurred than in the original model output, however, the most prominent objects are still easily recognizable.
+Unfortunately, this issue was only noticed at the end of this week's pruning process, which is why not many other results can be shown in this report.\\\\
+Since last week's final model produced reasonable reconstructions, I tried to multiply the weights to shrink the model.
+However, the implementation seems still to be incorrect as the smaller model only produces black images.
+I suppose the mistake lies in the transposed convolution, as the shape of the weights is different to standard convolutions:
+The dimensions for the in- and output channels are switched.
+I am going to investigate this issue in the following week.
+\begin{figure}[hpbt]
+	\centering
+	\subfloat[Original image\label{fig:original}]{\includegraphics[scale=0.175]{pics/rgb_original.png}}
+	\qquad
+	\subfloat[Original model output\label{fig:original_model}]{\includegraphics[scale=0.175]{pics/output.png}}
+	\qquad
+	\subfloat[Correctly reconstructed image data for last week's model at $\alpha=0$.]{\includegraphics[scale=0.175]{pics/0_output.png}}
+	\caption[]{Original and reconstructed image data}
+	\label{fig:true}
+\end{figure}
+
+\section{Addendum to report week 7: GPU test results}
+As the GPU test results for the pruned VGG were rather unexpected, the implementation was revised.
+It turned out, that I measured the wrong parameter (i.e., GPU utilization vs.\ used memory/free memory).
+The following updated results were obtained:
+On average, the original model took $\approx$0.055 seconds for each batch, while the pruned model took $\approx$0.053 seconds.\footnote{The duration measurement has not been changed, but is listed for the sake of completeness.}
+The smaller model had an average unit consumption of 31.02\%, whereas the original model needed 41.41\% on average.
+These results are much more in line with the expected impact of pruning.
+
+\section{Plan}
+\begin{itemize}
+	\item Multiply weights correctly to obtain smaller model
+	\item If successfull: Prune corresponding decoder based on smaller model
+	\item Test if it is possible to prune encoder and decoder at the same time
+\end{itemize}
+
+{\small
+\bibliographystyle{ieee}
+\bibliography{egbib}
+}
+
+\end{document}

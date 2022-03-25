@@ -1,0 +1,151 @@
+\documentclass[10pt,twocolumn,letterpaper]{article}
+% \documentclass[12pt,letterpaper]{article}
+
+\usepackage{listings}
+\usepackage{cvpr}
+\usepackage{times}
+\usepackage{epsfig}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{subfig}
+
+% Include other packages here, before hyperref.
+
+% If you comment hyperref and then uncomment it, you should delete
+% egpaper.aux before re-running latex.  (Or just hit 'q' on the first latex
+% run, let it finish, and you should be clear).
+\usepackage[breaklinks=true,bookmarks=false]{hyperref}
+
+\cvprfinalcopy % *** Uncomment this line for the final submission
+
+\def\cvprPaperID{****} % *** Enter the CVPR Paper ID here
+\def\httilde{\mbox{\tt\raisebox{-.5ex}{\symbol{126}}}}
+\graphicspath{{./pics/}} % put all graphics here
+
+% Pages are numbered in submission mode, and unnumbered in camera-ready
+%\ifcvprfinal\pagestyle{empty}\fi
+%\setcounter{page}{4321}
+\begin{document}
+
+%%%%%%%%% TITLE
+% \title{\LaTeX\ Author Guidelines for CVPR Proceedings}
+\title{Model Pruning: Weekly Report 6}
+\author{Patricia Gschoßmann}
+
+\maketitle
+%\thispagestyle{empty}
+
+%%%%%%%%% BODY TEXT
+\section{Weekly Progress}
+In this week I continued working on the unfinished classification task from last week.
+Last week's experiments maintained a stable performance until $\alpha=0.015$ (i.e.\ a validation accuracy of $\approx$ 88\%).
+The first larger drop happend at $\alpha=0.0125$, which reached a validation accuracy of 84\% with a learning rate of 0.0001.
+Last week's main observation was, that local minima can be exceeded by resuming the training and increasing the initial learning rate.
+Based on this, two experiments were executed, starting from $\alpha=0.0125$:
+\begin{enumerate}
+	\item Resume training while iteratively increasing the learning rate. Reduce $\alpha$ as soon as the local minima are surpassed.
+	\item Same as above, but additionally enable weight updates for the pretrained model.
+\end{enumerate}
+% Both experiments were successfully completed, i.e.\ 65\% of the original model's parameters were pruned while maintaining an validation and accuracy of 88\%.
+% In total, the pruned model's accuracy dropped just 4\% compared to that of the original model.\\\\
+I additionally started another experiment, where weight updates for the pretrained model are enabled from the beginning.
+A final validation accuracy of 88\% was achieved, moreover, it was sufficient to decay $\alpha$ by 0.1 at each iteration to reach this performance.
+
+\section{Results}
+\subsection{Without weight updates}\label{noupdates}
+With a learning rate of $0.0001$ the model was able to reach a validation accuracy of $\approx$ 84\% at $\alpha=0.0125$.
+To overcome this local minima, the initial learning rate was increased - once with 0.001 and once with 0.01.
+How
+However, both approached worsened the performance (see fig.~\ref{fig:no-updates-2}).\\
+Based on these results, I continued reducing $\alpha$ to 0.01.
+However, at this step, the model failed to achieve a higher validation accuracy than 70\%, even with the learning rate approach - increasing the learning rate worsened the results as before.\\
+I decided to reduce $\alpha$ even further to 0.0, based on the fact, that in last week's experiments a validation accuracy of 85\% was reached for this $\alpha$.
+An initial learning rate of 0.001 lead to a validation accuracy of 48\%; resuming training for this result with a learning rate equal to $0.01$ increased it to 75\%.
+Currently a further iteration with 0.1 is running, to overcome the 75\% accuracy bound (see fig.~\ref{fig:no-updates}).
+\begin{figure}[hpbt]
+	\centering
+	\centering
+	\subfloat[Training accuracy]{\includegraphics[scale=0.4]{pics/no-updates-alpha-0.0125-to-0.0125-acc.png}}
+	\hspace{0.1\textwidth}
+	\subfloat[Validation accuracy]{\includegraphics[scale=0.4]{pics/no-updates-alpha-0.0125-to-0.0125.png}}
+	\caption[]{Train- and validation accuracy for $\alpha=0.0125$, based on the previously trained model with $\alpha=0.0125$ (green).
+		Pink: $\alpha=0.0125$, $lr=0.001$, based on green.
+		Orange: $\alpha=0.0125$, $lr=0.01$, based on green.}
+	\label{fig:no-updates-2}
+\end{figure}
+\begin{figure}[hpbt]
+	\centering
+	\centering
+	\subfloat[Training accuracy]{\includegraphics[scale=0.4]{pics/no-updates-alpha-0.0125-to-0.0-acc.png}}
+	\hspace{0.1\textwidth}
+	\subfloat[Validation accuracy]{\includegraphics[scale=0.4]{pics/no-updates-alpha-0.0125-to-0.0.png}}
+	\caption[]{Train- and validation accuracy for $\alpha=0.0$, based on the previously trained model with $\alpha=0.0125$ (green curve in fig.~\ref{fig:no-updates-2}).\\
+		Orange: $\alpha=0.0$, $lr=0.001$.
+		Gray: $\alpha=0.0$, $lr=0.01$, based on orange.
+		Blue: $\alpha=0.0$, $lr=0.1$, based on gray.}
+	\label{fig:no-updates}
+\end{figure}
+
+\subsection{With weight updates}
+For the following experiments, weight updates for the pretained model were enabled.
+\subsubsection{Starting from $\alpha=0.0125$}\label{updates}
+I started this experiment by resuming the training for the model with $\alpha=0.0125$, without changing the learning rate ($=0.0001$).
+Enabeling weight updates only improved the performance significantly - the validation accuracy increased from 84\% to 91,5\%.
+I continued reducing $\alpha$ in 0.00025 steps, without changing the learning rate.
+Until $\alpha=0.0075$ an accuracy of $\approx$ 91\% could be maintained.
+At $\alpha=0.005$ it decreased by 2\%.
+The first significant drop happend at $\alpha=0.0025$, where the validation accuracy was only 55\%.
+To overcome this local minima, the initial learning rate was increased - once with $0.001$ and once with $0.01$.
+However, both times, the model failed to learn anything (see fig.~\ref{fig:updates}).\\
+Based on these results, I decided to set $\alpha$ equal 0.0, since $0.005$ is already very small.
+Learning rates equal to 0.0001 and 0.00005 failed, however further iterations with 0.001 and 0.01 are running.
+\begin{figure}[hpbt]
+	\centering
+	\centering
+	\subfloat[Training accuracy]{\includegraphics[scale=0.4]{pics/updates-alpha-0.0125-to-0.0-train-acc.png}}
+	\hspace{0.1\textwidth}
+	\subfloat[Validation accuracy]{\includegraphics[scale=0.4]{pics/updates-alpha-0.0125-to-0.0-acc.png}}
+	\caption[]{Train- and validation accuracy for different $\alpha$-values with weight updates of the pretrained model starting from $\alpha=0.0125$ (green curve in fig.~\ref{fig:no-updates-2}).\\
+		Orange: $\alpha=0.0075$.
+		Light blue (high acc.): $\alpha=0.005$.
+		Gray: $\alpha=0.0025$, $lr=0.0001$.
+		Dark blue: $\alpha=0.0025$, $lr=0.001$, based on gray.
+		Light blue (low acc.): $\alpha=0.0025$, $lr=0.01$, based on gray.}
+	\label{fig:updates}
+\end{figure}
+
+\subsubsection{From the beginning}
+This experiment was executed starting from $\alpha=1.0$ and with a step-deacy of 0.1.
+With an initial learning rate of 0.001 for each iteration, the model was able to maintain a validation accuracy of 90\% throughout the whole training, until $\alpha=0.0$, where the accuracy dropped by 6\%.
+Resuming training two times, first with a learning rate of 0.01, second with a learing rate of 0.1, lead to a final validation accuracy of 88\% (see fig.~\ref{fig:updates-beginning}).\\\\
+After the final model reached the desired accuracy, its parallel branches were pruned to obtain the smaller version of it.
+The resulting pruned model was again tested on the test data, to ensure that the pruning was done correctly.
+It maintained the same accuracy as during the validation.
+\begin{figure}[hpbt]
+	\centering
+	\centering
+	\subfloat[Training accuracy]{\includegraphics[scale=0.4]{pics/updates-beginning-train.png}}
+	\hspace{0.1\textwidth}
+	\subfloat[Validation accuracy]{\includegraphics[scale=0.4]{pics/updates-beginning-val.png}}
+	\caption[]{Train- and validation accuracy for different $\alpha$-values with weight updates of the pretrained model starting from $\alpha=1.0$.\\
+		Orange: $\alpha=0.1$, $lr=0.001$.
+		Red: $\alpha=0.0$, $lr=0.001$.
+		Blue: $\alpha=0.0$, $lr=0.01$, based on red.
+		Green: $\alpha=0.0$, $lr=0.1$, based on blue.}
+	\label{fig:updates-beginning}
+\end{figure}
+
+\section{Plan}
+\begin{itemize}
+	\item Try to improve performance of unfinished models (see section~\ref{noupdates}, and~\ref{updates}).
+	\item Execute additional tests regarding time and average memory consumption for finished models and visualize results to further compare the performances of the original and pruned models.
+	\item Test pruning approach/Start experiments with Coding Task 1.
+\end{itemize}
+
+{\small
+\bibliographystyle{ieee}
+\bibliography{egbib}
+}
+
+\end{document}

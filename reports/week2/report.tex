@@ -1,0 +1,111 @@
+\documentclass[10pt,twocolumn,letterpaper]{article}
+% \documentclass[12pt,letterpaper]{article}
+
+\usepackage{listings}
+\usepackage{cvpr}
+\usepackage{times}
+\usepackage{epsfig}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{subfig}
+
+% Include other packages here, before hyperref.
+
+% If you comment hyperref and then uncomment it, you should delete
+% egpaper.aux before re-running latex.  (Or just hit 'q' on the first latex
+% run, let it finish, and you should be clear).
+\usepackage[breaklinks=true,bookmarks=false]{hyperref}
+
+\cvprfinalcopy % *** Uncomment this line for the final submission
+
+\def\cvprPaperID{****} % *** Enter the CVPR Paper ID here
+\def\httilde{\mbox{\tt\raisebox{-.5ex}{\symbol{126}}}}
+\graphicspath{{./pics/}} % put all graphics here
+
+% Pages are numbered in submission mode, and unnumbered in camera-ready
+%\ifcvprfinal\pagestyle{empty}\fi
+%\setcounter{page}{4321}
+\begin{document}
+
+%%%%%%%%% TITLE
+% \title{\LaTeX\ Author Guidelines for CVPR Proceedings}
+\title{Model Pruning: Weekly Report 2}
+\author{Patricia Gschoßmann}
+
+\maketitle
+%\thispagestyle{empty}
+
+%%%%%%%%% BODY TEXT
+\section{Weekly Progress}
+A new attempt to prune the original VGG was executed.
+Compared to the last approach, the goal now was to prune 35\% of the parameters right away\footnote{Instead of only 25\%.}, since that is half of the parameters that were pruned in task 3 in total.
+Moreover, an additional early-stopping callback was used during the objective selection to stop the training for each $\alpha$-value at the right time.
+Once the validation loss stopped improving for 25 epochs, $\alpha$ is reduced and the training is resumed with the new value.\\\\
+The implementation was adapted to a more general framework.
+To execute the objective selection, the user now needs to specify the model type, the path to a pretained model and what percentage of the parameters should be pruned.\\
+Furthermore different types of $\alpha$-scheduler were implemented.
+Currently, experiments with the step-, exponential- and multiplicative scheduler are running.
+
+\section{Results}
+\begin{figure}[hpbt]
+	\centering
+	\subfloat[Training loss]{\includegraphics[scale=0.4]{pics/train_loss.png}}
+	\hspace{0.1\textwidth}
+	\subfloat[Validation loss]{\includegraphics[scale=0.4]{pics/val_loss.png}}
+	\caption[]{Development of train- and validation loss during training for $\alpha=0.4$ (green), $\alpha=0.3$ (grey), $\alpha=0.2$ (orange), $\alpha=0.1$ (blue) and $\alpha=0$ (red).}
+	\label{fig:loss}
+\end{figure}
+\begin{figure}[hpbt]
+	\centering
+	\subfloat[Training accuracy]{\includegraphics[scale=0.4]{pics/train_acc.png}}
+	\hspace{0.1\textwidth}
+	\subfloat[Validation accuracy]{\includegraphics[scale=0.4]{pics/val_acc.png}}
+	\caption[]{Development of train- and validation accuracy during training for $\alpha=0.4$ (green), $\alpha=0.3$ (grey), $\alpha=0.2$ (orange), $\alpha=0.1$ (blue) and $\alpha=0$ (red).}
+	\label{fig:acc}
+\end{figure}
+Fig.~\ref{fig:loss} shows the training and validation loss of the model starting from $\alpha=0.4$.
+Fig.~\ref{fig:acc} shows the corresponding accuracy.
+The model maintained a test accuracy of 90\% until $\alpha=0.4$.
+At $\alpha=0.3$ the accuracy only reached 81\%.
+After that, it dropped below 30\%.
+The results are more promising compared to last week, since the accuracy is maintained longer while at the same time more parameters are being pruned.
+However, the performance is still worse than expected.
+The figures show, that at $\alpha=0.3$ -- where the first bigger drop in the accuracy occured -- training took twice as long as before.
+In figure~\ref{fig:loss} one can see, that at $\alpha=0.2$ the training loss is still very low, whereas the validation loss stays very high and does not converge - an indication that the model is overfitting to the training set.
+This observation is reflected in the accuracy (see fig.~\ref{fig:acc}):
+The model achieves a high training, but a low validation accuracy.
+As a result, the model does not learn at all in the next iterations at $\alpha=0.1$ and $\alpha=0$.
+
+\section{Plan}
+My aim for the following week is to maintain the original performance of the model during pruning.
+The main goal is to prevent the model from overfitting.
+I will pursue following attempts:
+\begin{itemize}
+	\item Prevent overfitting by using a shorter patience duration for the early-stopping callback.
+	\item Prevent overfitting via data augmentation and cross-validation.
+	\item Execute experiments with new $\alpha$-schedule.\footnote{Already running.}
+\end{itemize}
+Furthermore, I want to execute the experiments by pruning a larger percentage than 35\%\footnote{Already running.}, since we know from task 3, that maintaining an accuracy of $\sim$90\% with in total 65\% less parameters is possible.
+
+\section{Summary of new scripts}
+\begin{itemize}
+	\item \texttt{abstract\_scheduler.py}: Abstract superclass for all schedulers including an abstract step method.
+	\item \texttt{step\_scheduler.py}: Decays $\alpha$ continuously by \texttt{step\_size}.
+		Subclass of \texttt{abstract\_scheduler.py}.
+	\item \texttt{exponential\_scheduler.py}: Decays $\alpha$ exponentially by \texttt{decay\_rate}.
+		Subclass of \texttt{abstract\_scheduler.py}.
+	\item \texttt{multiplicative\_scheduler.py}: Decays $\alpha$ by multiplying with \texttt{mu}.
+		Subclass of \texttt{abstract\_scheduler.py}.
+	\item \texttt{reduce\_on\_plateau\_scheduler.py}\footnote{Work in progress.}: Decays $\alpha$ when a metric has stopped improving.
+		Subclass of \texttt{abstract\_scheduler.py}.
+	\item \texttt{model\_enum.py}: Enum including all available types of models to choose for pruning.\footnote{Currently, only VGG is implemented.}
+	\item \texttt{scheduler\_enum.py}: Enum including all available schedulers to choose for pruning.
+\end{itemize}
+
+{\small
+\bibliographystyle{ieee}
+\bibliography{egbib}
+}
+
+\end{document}

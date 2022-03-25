@@ -1,0 +1,105 @@
+\documentclass[10pt,twocolumn,letterpaper]{article}
+% \documentclass[12pt,letterpaper]{article}
+
+\usepackage{listings}
+\usepackage{cvpr}
+\usepackage{times}
+\usepackage{epsfig}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{subfig}
+
+% Include other packages here, before hyperref.
+
+% If you comment hyperref and then uncomment it, you should delete
+% egpaper.aux before re-running latex.  (Or just hit 'q' on the first latex
+% run, let it finish, and you should be clear).
+\usepackage[breaklinks=true,bookmarks=false]{hyperref}
+
+\cvprfinalcopy % *** Uncomment this line for the final submission
+
+\def\cvprPaperID{****} % *** Enter the CVPR Paper ID here
+\def\httilde{\mbox{\tt\raisebox{-.5ex}{\symbol{126}}}}
+\graphicspath{{./pics/}} % put all graphics here
+
+% Pages are numbered in submission mode, and unnumbered in camera-ready
+%\ifcvprfinal\pagestyle{empty}\fi
+%\setcounter{page}{4321}
+\begin{document}
+
+%%%%%%%%% TITLE
+% \title{\LaTeX\ Author Guidelines for CVPR Proceedings}
+\title{Model Pruning: Weekly Report 1}
+\author{Patricia Gschoßmann}
+
+\maketitle
+%\thispagestyle{empty}
+
+%%%%%%%%% BODY TEXT
+\section{Weekly Progress}
+The goal for this week was to start implementing task 3\footnote{Pruning a VGG network for the task of classifying CIFAR10 images} with the new pruning approach.
+Initially, the original VGG network was trained as usual.
+Next, a new model, consisting of the pretrained network as well as a parallel branch for each convolutional layer, was trained following the new approach.
+As an initial starting point, each parallel branch aims to reduce the output of its corresponding convolutional layer to 75\%.
+For now, a dummy $\alpha$-schedule was used, reducing $\alpha$ from 0.9 to 0 in steps of 0.1.
+The weights of the resulting model were then pruned according to the new approach to obtain the smaller version.
+
+\section{Challenges and Possible Solutions}
+While implementing the parallel branches for the VGG network, I stumbled across the problem of where to place batch normalization and max pooling layers as well as the final flatten-opertation before feeding the convolutional output into the linear layer.
+For now, each of these operations is performed separately in the parallel running branches.
+My decision was based on the assumption, that otherwise the weights cannot be multiplied during pruning.\\\\
+Furthermore, pruning, as it is implemented now, was not able to preserve the original accuracy of 92\%.
+The model maintained an accuracy of 84\% until $\alpha=0.4$.
+After that, the accuracy dropped below 45\%, until it reached only 10\% at the end.
+This could indicate, that $\alpha$ needs to be reduced slower than at the beginning, after dropping below a certain threshold.\\\\
+Lastly, an unanswered question about multipling matrices with more than two dimensions using \texttt{torch.einsum} remains.
+To illustrate the problem, consider the first convolutional layer in the VGG model:
+\texttt{conv0} is a convolutional layer with the dimensions $(64, 3, 3, 3)$ and should be pruned to output only 48 channels resulting in the dimensions $(48, 3, 3, 3)$.
+\texttt{pconv0} is the first convolutional layer in the corresponding parallel branch with the dimensions $(48, 64, 3, 3)$.
+To prune the weights of \texttt{conv0}, they have to be multiplied with the weights of \texttt{pconv0}.
+I came up with two possible solutions.
+\begin{itemize}
+	\item \texttt{torch.einsum("abcd, befg -> aefg", pconv0\_weights, conv0\_weights)}
+	\item \texttt{torch.einsum("abcd, befg ->  aecd", pconv0\_weights, conv0\_weights)}
+\end{itemize}
+I still have to investigate which of them is correct and why, by checking the documentation.
+For now, the first one is implemented, since it is used in the tutorial script \texttt{conv\_pruning.ipynb}.
+
+\section{Plan}
+My goal for the following week is to prune the model while maintaining its original accuracy.
+I will pursue following attempts:
+\begin{itemize}
+	\item Do not prune each convolutional layer at once
+	\item Specify a more suitable alpha schedule
+\end{itemize}
+Of course, the second point will require more research and thinking.
+As a starting point, I want to look into multiple different learning rate scheduler.\\\\
+Furthermore, I want to adapt my implementation to a more general framework, such that the model architecture is not hard coded in any way.
+
+\section{Summary of new scripts}
+\begin{itemize}
+	\item \texttt{abstract\_model.py}: Abstract superclass for all models.
+		Dataloaders, train-, val- and teststep are shared across all submodels.
+		The forward method needs to be implemented.
+	\item \texttt{vgg.py}:
+		Architecture of the pre-trained VGG16 network.
+		The model has been slightly modified from the original, combining the last three linear layers to only one.
+		Subclass of \texttt{abstract\_model.py}.
+	\item \texttt{pruned\_model.py}: Architecture of the model used for the pruning procedure.
+		It consists of a pre-trained network as well as parallel branches for each layer to prune.
+		Subclass of \texttt{abstract\_model.py}.
+	\item \texttt{smaller\_model.py}: Architecture of the reduced model after pruning.
+		Subclass of \texttt{abstract\_model.py}.
+	\item \texttt{train.py}: Script to train a pre-trained model on the CIFAR10 dataset.
+	\item \texttt{objective\_selection.py}: Script to train a \texttt{pruned\_model.py} with the new approach using a dummy $\alpha$-schedule.
+	\item \texttt{prune.py}: Script to prune the weights of a trained \texttt{pruned\_model.py} following the new approach to obtain a \texttt{smaller\_model.py}.
+	\item \texttt{config.py}: Specifies training and network architecture configurations.
+\end{itemize}
+
+{\small
+\bibliographystyle{ieee}
+\bibliography{egbib}
+}
+
+\end{document}

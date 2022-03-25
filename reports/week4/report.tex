@@ -1,0 +1,117 @@
+\documentclass[10pt,twocolumn,letterpaper]{article}
+% \documentclass[12pt,letterpaper]{article}
+
+\usepackage{listings}
+\usepackage{cvpr}
+\usepackage{times}
+\usepackage{epsfig}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{subfig}
+
+% Include other packages here, before hyperref.
+
+% If you comment hyperref and then uncomment it, you should delete
+% egpaper.aux before re-running latex.  (Or just hit 'q' on the first latex
+% run, let it finish, and you should be clear).
+\usepackage[breaklinks=true,bookmarks=false]{hyperref}
+
+\cvprfinalcopy % *** Uncomment this line for the final submission
+
+\def\cvprPaperID{****} % *** Enter the CVPR Paper ID here
+\def\httilde{\mbox{\tt\raisebox{-.5ex}{\symbol{126}}}}
+\graphicspath{{./pics/}} % put all graphics here
+
+% Pages are numbered in submission mode, and unnumbered in camera-ready
+%\ifcvprfinal\pagestyle{empty}\fi
+%\setcounter{page}{4321}
+\begin{document}
+
+%%%%%%%%% TITLE
+% \title{\LaTeX\ Author Guidelines for CVPR Proceedings}
+\title{Model Pruning: Weekly Report 4}
+\author{Patricia Gschoßmann}
+
+\maketitle
+%\thispagestyle{empty}
+
+%%%%%%%%% BODY TEXT
+\section{Weekly Progress}
+In this week selected experiments from last week were continued to improve the result.
+As before, the goal was to prune 65\% of the parameters at once.
+The following changes were applied compared to last week:
+\begin{itemize}
+	\item Initialize weights of convolutional layers in each parallel branch appropriately using He initialization\footnote{\url{https://openaccess.thecvf.com/content_iccv_2015/papers/He_Delving_Deep_into_ICCV_2015_paper.pdf}}
+	\item Remove early stopping during $\alpha$-schedule
+	\item Train for a maximum of 350 epochs for each $\alpha$
+	\item Reduce the initial learning rate from 0.1 to 0.001
+	\item Replace the previous learning rate scheduler; reduce the learning rate, whenever the validation loss stops improving\footnote{
+			To clarify:
+			The learning rate is reset to 0.001, whenever $\alpha$ drops, i.e.\ the learing rate schedule restarts.}
+	\item Regarding regression: The loss now corresponds to the average MSE between each output value and its target (instead of the sum)
+\end{itemize}
+
+\section{Results}
+\subsection{Classification}
+In last week's experiments it was observed that the training for different $\alpha$-values stopped before the model reached its final performance, because of the early stopping callback.
+Figure~\ref{fig:acc_classification} shows intermediate results for the new set up without this callback for different $\alpha$-values between $1$ and $0.4$.\footnote{The experiment is still running.}
+The same $\alpha$-schedule as last week was used.
+So far, the model maintains its original training accuracy.
+Moreover, the model reached a higher validation accuracy for lower $\alpha$-values as expected due to a longer training period.
+What is also interesting is, that model with lower $\alpha$-values sometimes outperform higher $\alpha$-values.\\
+An improvement compared to last week is, that so far the model reached a validation accuracy higher than 90\% for each $\alpha$-value.
+The experiment is still running, but based on this observation it is more likely, that the models maintains its performance until $\alpha=0$.
+\begin{figure}[hpbt]
+	\centering
+	\subfloat[Training accuracy]{\includegraphics[scale=0.4]{pics/train_acc.png}}
+	\hspace{0.1\textwidth}
+	\subfloat[Validation accuracy]{\includegraphics[scale=0.4]{pics/val_acc_class.png}}
+	\caption[]{Development of train- and validation accuracy during training for $\alpha=0.95$ (orange), $\alpha=0.6$ (red), $\alpha=0.45$ (light blue).
+	An exponential schedule with a decay rate of $0.05$ was used.}
+	\label{fig:acc_classification}
+\end{figure}
+\subsection{Regression}
+Figure~\ref{fig:loss_regression} shows the training and validation loss for different $\alpha$ values between $1$ and $0.6$ for the new set up using regression.
+The same $\alpha$-schedule was used as last week.
+The development of the training loss clearly improved compared to last week:
+It decreases continously for each $\alpha$.
+It can also be seen that the loss would continue to decrease if the training units were extended to more than 350 epochs.
+However, investigating the graph of the validation loss shows reveals extremly overfitting, which is why this experiment was aborted early.
+% What is interesting is, that while the validation loss keeps increasing, the validation accuracy stagnates (see fig~\ref{fig:val_acc_regression}).
+% One possible reason for that could be that the model is classifying the wrong classes with a higher confidence, i.e.\ the model increases its logits for the wrong classes.
+% In this way, the total loss decreases, while the accuracy stays the same.
+% This would indicate, that the loss, as it is implemented now, does not fit to the problem.
+Further investigation is needed to discover the reason for this behavior.
+Independently of that observation, an alternative approach would be to optimize over each logit error separately instead of optimizing based on their average error.
+\begin{figure}[hpbt]
+	\centering
+	\subfloat[Training loss]{\includegraphics[scale=0.4]{pics/train_loss_regression.png}}
+	\hspace{0.1\textwidth}
+	\subfloat[Validation loss]{\includegraphics[scale=0.4]{pics/val_loss_regression.png}}
+	\caption[]{Train- and validation loss during training as regression task for $\alpha$-values between $1$ and $0.6$.
+	An exponential schedule with a decay rate of $0.05$ was used.}
+	\label{fig:loss_regression}
+\end{figure}
+\begin{figure}[hpbt]
+	\centering
+	\includegraphics[scale=0.4]{pics/val_acc.png}
+	\caption[]{Development of validation accuracy during training as regression task for $\alpha$-values.
+	An exponential schedule with a decay rate of $0.05$ was used.}
+	\label{fig:val_acc_regression}
+\end{figure}
+
+\section{Plan}
+In the following week I continue with my current approach for the classification task, based on the (still open) results for the currently running experiment.
+Moreover I want to investigate following approaches in order to improve my results:
+\begin{itemize}
+	\item Debug regression loss
+	\item Allow weight updates for the pretrained model.
+\end{itemize}
+
+{\small
+\bibliographystyle{ieee}
+\bibliography{egbib}
+}
+
+\end{document}

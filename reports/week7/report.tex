@@ -1,0 +1,130 @@
+\documentclass[10pt,twocolumn,letterpaper]{article}
+% \documentclass[12pt,letterpaper]{article}
+
+\usepackage{listings}
+\usepackage{titlesec}
+\setcounter{secnumdepth}{4}
+\usepackage{cvpr}
+\usepackage{times}
+\usepackage{epsfig}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{subfig}
+
+\titleformat{\paragraph}
+{\normalfont\normalsize\bfseries}{\theparagraph}{1em}{}
+\titlespacing*{\paragraph}
+{0pt}{3.25ex plus 1ex minus .2ex}{1.5ex plus .2ex}
+
+% Include other packages here, before hyperref.
+
+% If you comment hyperref and then uncomment it, you should delete
+% egpaper.aux before re-running latex.  (Or just hit 'q' on the first latex
+% run, let it finish, and you should be clear).
+\usepackage[breaklinks=true,bookmarks=false]{hyperref}
+
+\cvprfinalcopy % *** Uncomment this line for the final submission
+
+\def\cvprPaperID{****} % *** Enter the CVPR Paper ID here
+\def\httilde{\mbox{\tt\raisebox{-.5ex}{\symbol{126}}}}
+\graphicspath{{./pics/}} % put all graphics here
+
+% Pages are numbered in submission mode, and unnumbered in camera-ready
+%\ifcvprfinal\pagestyle{empty}\fi
+%\setcounter{page}{4321}
+\begin{document}
+
+%%%%%%%%% TITLE
+% \title{\LaTeX\ Author Guidelines for CVPR Proceedings}
+\title{Model Pruning: Weekly Report 7}
+\author{Patricia Gschoßmann}
+
+\maketitle
+%\thispagestyle{empty}
+
+%%%%%%%%% BODY TEXT
+\section{Weekly Progress}
+In this week additional tests regarding time and average memory consumption for last week's finished model were executed.\\\\
+Moreover, I started to prune the RGB autoencoder from task 1.
+The goal is to reduce 65\% of selected convolutional layers in the model's en- and decoder.
+The original model's results can be seen in fig.~\ref{fig:original_model}.
+Input images are of size $128\times128\times3$.
+The images at the bottleneck are of size $16\times16\times256$, which in fact is not a real reduction.
+Unfortunately, this issue was only noticed during this week's pruning process.
+Training of a new RGB autoencoder, which reduces the images to a size of $16\times16\times128$ at the bottleneck, was started right away.
+Next week's goal is then to prune this model.
+\begin{figure}[hpbt]
+	\centering
+	\subfloat[Original image\label{fig:original}]{\includegraphics[scale=0.175]{pics/rgb_original.png}}
+	\qquad
+	\subfloat[Original model output\label{fig:original_model}]{\includegraphics[scale=0.175]{pics/rgb_result_original.png}}
+	\caption[]{Original and reconstructed image data.}
+	\label{fig:results}
+\end{figure}
+
+\section{Results}
+\subsection{Test results of last week's experiments}
+I executed additional tests for last week's model, which was trained with weight updates for the pretrained model from the beginning.
+The average time taken as well as the average memory consumption per batch was calculated.
+The test set contained 10000 images and each batch consisted of a single image.
+\subsubsection{On GPU}
+The tests were executed on a NVIDIA RXT 2070 SUPER GPU.
+On average, the original model took $\approx$0.0228 seconds for each batch, while the pruned model took $\approx$0.0059 seconds, which means that the smaller model was almost four times faster.
+However, no such improvement could be observed with regard to the average GPU consumption:
+The smaller model utilized only 0.02\% less of it, than the original model; more precisely 49.88\% compared to 49.90\%.
+\subsubsection{On CPU}
+The tests were executed on an Intel i5-8250U (8) @ 3.400 GHz CPU.
+On average, the original model took $\approx$0.0452 seconds for each batch, while the pruned model took $\approx$0.0394 seconds.
+The difference is not as much as compared to the results on the GPU, however, it is still a noticeable improvement.
+Interestingly, the pruned model showed bigger improvements in terms of memory consumption:
+The original model utilized 17.83\% of the CPU, while the smaller model only took up 17.25\% - 0.58\% less.
+
+\subsection{Results of this week's experiments}
+The original autoencoder uses transposed convolutions during the decoding process.
+I decided to not prune them, and consequently the previous convolutional layer neither.
+In this way the usual pruning approach can be applied, before venturing into transposed convolutions.\\
+However, this actually leads to the same issue as with the original model:
+Since the layer before transposed convolutions is not pruned, especially the last layer before the bottleneck, the pruned model does as well not truely encode the images.
+
+\subsubsection{Pruning}
+Pruning with weight updates of the pretrained model turns out to be the most successful approach in the last weeks, which is why the same was applied for the following results.
+Again, a learning rate of 0.001 was used, as well as a step scheduler, which reduces $\alpha$ by 0.1 at each iteration.
+I used the validation loss as performance indicator, since no accuracy is available for this task.
+The original model reached a minimum validation loss of 1.69.\\
+Except for $\alpha=0$, the validation loss was the highest for the model with $\alpha=0.9$ with $val\_loss=2.37$.
+With each $\alpha$-decay, the performance improved - a different development compared to the experiments with the VGG, where the performance dropped with each iteration.
+At $\alpha=0$, the model reached a minimum validation loss of 2.57.
+The training was resumed with a learning rate of 0.01.
+Unfortunately, this did not improve the performance.
+Currently, the training is further resumed with a learning rate of 0.1.
+
+\subsubsection{Model output}
+Even though the validation loss is yet not as low as desired, I was interested in how the model output looks.
+Intermediate results for $\alpha=0.1$ and $\alpha=0$ before pruning are shown in figure~\ref{fig:results}.
+One can see, that the reconstructed image for $\alpha=0$ is blurrier than for $\alpha=0.1$.
+\begin{figure}[hpbt]
+	\centering
+	\subfloat[Output at $\alpha=0.1$]{\includegraphics[scale=0.175]{pics/rgb_result_0.1.png}}
+	\qquad
+	\subfloat[Output at $\alpha=0$]{\includegraphics[scale=0.175]{pics/rgb_result_0.png}}
+	\caption[]{Reconstructed image data during the pruning process. The original image is depicted in fig.~\ref{fig:original}.}
+	\label{fig:results}
+\end{figure}
+
+\section{Plan}
+Prune RGB autoencoder with real bottleneck and test its performance on CPU and GPU.
+
+\section{Summary of new scripts}
+\begin{itemize}
+	\item \texttt{autoencoder.py}: Architecture of the pre-trained RGB autoencoder.
+		Subclass of \texttt{abstract\_model.py}.
+	\item \texttt{autoencoder\_dataset.py}: RGB and Depth dataset used to train the autoencoder.
+\end{itemize}
+
+{\small
+\bibliographystyle{ieee}
+\bibliography{egbib}
+}
+
+\end{document}
